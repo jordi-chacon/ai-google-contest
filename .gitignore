@@ -1,1 +1,5 @@
 *~
+*.o
+maps*
+tools*
+example_bots*
