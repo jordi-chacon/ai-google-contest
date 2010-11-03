@@ -21,7 +21,6 @@ void SendShips(const PlanetWars& pw, int my_planet, int my_planet_ships) {
     //    myfile << score << " = " << growth_rate << "(" << 40*growth_rate<<") + "<<
     //  num_ships<<"("<<5000/num_ships/2<<") + "<<distance<<"("<<1000/distance<<")\n";
     PlanetScore* ps = new PlanetScore(*it, score);
-    myfile << ps->GetPlanet() << " " <<  "\n";
     neutral_planets_score.push_back(*ps);
   }
   sort(neutral_planets_score.begin(), neutral_planets_score.end());
@@ -29,10 +28,8 @@ void SendShips(const PlanetWars& pw, int my_planet, int my_planet_ships) {
   // (2) Send ships from my planet to the weakest planets that I don't own
   for(std::vector<PlanetScore>::iterator it = neutral_planets_score.begin();
       it < neutral_planets_score.end(); ++it) {
-    myfile << "1";
     Planet p = *(it->GetPlanet());
     if(my_planet_ships > p.NumShips() + 5) {
-      myfile << p.PlanetID() << " " << p.NumShips() << "\n";
       pw.IssueOrder(my_planet, p.PlanetID(), p.NumShips()+1);
       my_planet_ships -= p.NumShips();
     }
