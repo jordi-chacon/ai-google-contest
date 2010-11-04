@@ -1,0 +1,48 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -smp enable
+-export([results_receiver/3
+	 , run_maps/4]).
+
+-define(AMOUNT_OF_MAPS, 100).
+-define(PROCESSORS, 8).
+main([PathToOpponentBot]) ->
+    Self = self(),
+    Receiver = spawn(fun() -> results_receiver({0,0,0}, Self, ?PROCESSORS) end),
+    IDS = generate_maps_ids_to_run(?PROCESSORS, ?AMOUNT_OF_MAPS rem ?PROCESSORS),
+    [spawn(fun() -> run_maps(Receiver, LowMapID, HighMapID, PathToOpponentBot) end) ||
+	{LowMapID, HighMapID} <- IDS],
+    receive
+	{OldWinner, NewWinner, Draw} ->
+	    io:format("Old winner: ~p~nNew winner: ~p~nDraws: ~p~n",
+		      [OldWinner, NewWinner, Draw])
+    end,
+    ok.
+
+results_receiver(State, Parent, 0) ->
+    Parent ! State;
+results_receiver({Old, New, Draw}, Parent, ResultsToReceive) ->
+    receive
+	{ResOld, ResNew, ResDraw} ->
+	    results_receiver({Old+ResOld, New+ResNew, Draw+ResDraw},
+			     Parent, ResultsToReceive-1)
+    end.
+
+run_maps(Receiver, LowMapID, HighMapID, PathToOpponentBot) ->
+    Cmd = "./run_maps.sh "++i2l(LowMapID)++" "++i2l(HighMapID)++" "++PathToOpponentBot,
+    [Old, New, Draw] = string:tokens(os:cmd(Cmd), " "),
+    Receiver ! {l2i(Old), l2i(New), l2i(Draw)}.
+
+generate_maps_ids_to_run(Left, Reminder) ->
+    generate_maps_ids_to_run(
+      Left, Reminder, 1, ?AMOUNT_OF_MAPS div ?PROCESSORS - 1,[]).
+generate_maps_ids_to_run(0, _Remainder, _NextLowerLimit, _Amount, Acc) -> Acc;
+generate_maps_ids_to_run(Left, 0, NextLowerLimit, Amount, Acc) ->
+    generate_maps_ids_to_run(Left-1, 0, NextLowerLimit+Amount+1, Amount,
+			     [{NextLowerLimit, NextLowerLimit+Amount}|Acc]);
+generate_maps_ids_to_run(Left, Remainder, NextLowerLimit, Amount, Acc) ->
+    generate_maps_ids_to_run(Left-1, Remainder-1, NextLowerLimit+Amount+2, Amount,
+			     [{NextLowerLimit, NextLowerLimit+Amount+1}|Acc]).
+
+l2i(L) -> list_to_integer(L).
+i2l(I) -> integer_to_list(I).
