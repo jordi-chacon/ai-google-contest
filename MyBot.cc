@@ -1,18 +1,25 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <map>
 #include "PlanetWars.h"
 #include "PlanetScore.h"
 using namespace std;
 
 PlanetWars* pw;
+map<int, vector<int> > available_ships_in_planets;
 
 void DoTurn(int turn);
-void try_attack_planets(int turn);
-int ships_in_planet_available_to_send_out(Planet p);
+
+// INITIALIZE
+void initialise_ships_available_per_turn_and_planet();
 vector<int> ships_available_in_planet_per_turn(Planet p);
 vector<int> compute_ships_available_per_turn_with_attacks(vector<int> ships_per_turn, Planet p);
 vector<int> compute_ships_available_per_turn_before_attacks(Planet p);
+
+// ATTACK
+void try_attack_planets(int turn);
+int ships_in_planet_available_to_send_out(Planet p);
 void try_to_attack_from_planet(int my_planet, int available_ships_for_attack, int turn);
 vector<PlanetScore> compute_planets_list_sorted_by_score(int turn, int my_planet);
 void decide_where_to_attack(int my_planet, int ships_for_attack, vector<PlanetScore> ps_score);
@@ -48,28 +55,18 @@ int main(int argc, char *argv[]) {
 }
 
 void DoTurn(int turn) {
+  initialise_ships_available_per_turn_and_planet();
   try_attack_planets(turn);
 }
 
-void try_attack_planets(int turn) {
-  int strongest_planet;
-  int strongest_planet_ships;
+/////////////////////////////////////////////////////////////////////////////////////////
+// I N I T I A L I Z E
+/////////////////////////////////////////////////////////////////////////////////////////
+void initialise_ships_available_per_turn_and_planet() {
   vector<Planet> my_planets = pw->MyPlanets();
-  for (int i = 0; i < my_planets.size(); ++i) {
-    int ships_to_send = ships_in_planet_available_to_send_out(my_planets[i]);
-    try_to_attack_from_planet(my_planets[i].PlanetID(), ships_to_send, turn);
+  for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
+    available_ships_in_planets[it->PlanetID()] = ships_available_in_planet_per_turn(*it);
   }
-}
-
-int ships_in_planet_available_to_send_out(Planet p) {
-  vector<int> ships_per_turn = ships_available_in_planet_per_turn(p);
-  int ships_to_send = 99999;
-  for(int i = 1; i < 50; i++) {
-    if(ships_per_turn[i] < ships_to_send)
-      ships_to_send = ships_per_turn[i];
-  }
-  if(ships_to_send < 0) return 0;
-  else return ships_to_send;
 }
 
 vector<int> ships_available_in_planet_per_turn(Planet p) {
@@ -95,6 +92,31 @@ vector<int> compute_ships_available_per_turn_with_attacks(vector<int> ships_per_
       }
   }
   return ships_per_turn;
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// A T T A C K
+/////////////////////////////////////////////////////////////////////////////////////////
+void try_attack_planets(int turn) {
+  int strongest_planet;
+  int strongest_planet_ships;
+  vector<Planet> my_planets = pw->MyPlanets();
+  for (int i = 0; i < my_planets.size(); ++i) {
+    int ships_to_send = ships_in_planet_available_to_send_out(my_planets[i]);
+    try_to_attack_from_planet(my_planets[i].PlanetID(), ships_to_send, turn);
+  }
+}
+
+int ships_in_planet_available_to_send_out(Planet p) {
+  vector<int> ships_per_turn = available_ships_in_planets[p.PlanetID()];
+  int ships_to_send = 99999;
+  for(int i = 1; i < 50; i++) {
+    if(ships_per_turn[i] < ships_to_send)
+      ships_to_send = ships_per_turn[i];
+  }
+  if(ships_to_send < 0) return 0;
+  else return ships_to_send;
 }
 
 void try_to_attack_from_planet(int my_planet, int available_ships_for_attack, int turn) {
