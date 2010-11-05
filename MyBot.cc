@@ -42,7 +42,7 @@ bool is_stupid_to_go_to_planet(Planet p, int turn) {
   return is_neutral_planet_with_many_fleets(p);
 }
 
-void SendShips(int my_planet, int my_planet_ships, int turn) {
+void send_ships(int my_planet, int my_planet_ships, int turn) {
   // (1) Find most interesting planets to send fleets
   vector<Planet> not_my_planets = pw->NotMyPlanets();
   vector<PlanetScore> not_my_planets_score;
@@ -80,39 +80,52 @@ void SendShips(int my_planet, int my_planet_ships, int turn) {
   }
 }
 
-int ships_needed_to_defend_planet(Planet p) {
-  vector<Fleet> enemy_fleets = pw->EnemyFleets();
+vector<int> compute_ships_available_per_turn_before_attacks(Planet p) {
   vector<int> ships_available_per_turn(50);
   ships_available_per_turn[0] = p.NumShips();
   for(int i = 1; i < 50; i++) {
     ships_available_per_turn[i] = ships_available_per_turn[i-1] + p.NumShips();
   }
-  for(vector<Fleet>::iterator it = enemy_fleets.begin();
-      it < enemy_fleets.end(); ++it) {
+  return ships_available_per_turn;
+}
+
+vector<int> compute_ships_available_per_turn_with_attacks(vector<int> ships_per_turn,
+							  Planet p) {
+  vector<Fleet> enemy_fleets = pw->EnemyFleets();
+  for(vector<Fleet>::iterator it = enemy_fleets.begin(); it < enemy_fleets.end(); ++it) {
     if(it->DestinationPlanet() == p.PlanetID())
-      ships_available_per_turn[it->TurnsRemaining()] -= it->NumShips();
+      ships_per_turn[it->TurnsRemaining()] -= it->NumShips();
   }
   for(int i = 1; i < 50; i++) {
-    ships_available_per_turn[i] -= ships_available_per_turn[i-1];
+    ships_per_turn[i] -= ships_per_turn[i-1];
   }
+  return ships_per_turn;
+}
+
+int ships_needed_to_keep_planet(Planet p) {
+  vector<int> ships_per_turn = compute_ships_available_per_turn_before_attacks(p);
+  ships_per_turn = compute_ships_available_per_turn_with_attacks(ships_per_turn, p);
   int minimum_ships_in_planet_for_next_turns = 99999;
   for(int i = 1; i < 50; i++) {
-    if(ships_available_per_turn[i] < minimum_ships_in_planet_for_next_turns)
-      minimum_ships_in_planet_for_next_turns = ships_available_per_turn[i];
+    if(ships_per_turn[i] < minimum_ships_in_planet_for_next_turns)
+      minimum_ships_in_planet_for_next_turns = ships_per_turn[i];
   }
   if(minimum_ships_in_planet_for_next_turns < 0) return 0;
   else return minimum_ships_in_planet_for_next_turns;
 }
 
-void DoTurn(int turn) {
-  // Per each of my planets try to send ships to other planets
+void try_attack_planets(int turn) {
   int strongest_planet;
   int strongest_planet_ships;
   vector<Planet> my_planets = pw->MyPlanets();
   for (int i = 0; i < my_planets.size(); ++i) {
-    int ships_needed_to_defend = ships_needed_to_defend_planet(my_planets[i]);
-    SendShips(my_planets[i].PlanetID(), ships_needed_to_defend, turn);
+    int ships_needed_to_keep = ships_needed_to_keep_planet(my_planets[i]);
+    send_ships(my_planets[i].PlanetID(), ships_needed_to_keep, turn);
   }
+}
+
+void DoTurn(int turn) {
+  try_attack_planets(turn);
 }
 
 
