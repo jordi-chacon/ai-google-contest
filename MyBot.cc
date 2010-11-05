@@ -9,7 +9,8 @@ PlanetWars* pw;
 
 void DoTurn(int turn);
 void try_attack_planets(int turn);
-int ships_needed_to_keep_planet(Planet p);
+int ships_in_planet_available_to_send_out(Planet p);
+vector<int> ships_available_in_planet_per_turn(Planet p);
 vector<int> compute_ships_available_per_turn_with_attacks(vector<int> ships_per_turn, Planet p);
 vector<int> compute_ships_available_per_turn_before_attacks(Planet p);
 void try_to_attack_from_planet(int my_planet, int available_ships_for_attack, int turn);
@@ -55,21 +56,25 @@ void try_attack_planets(int turn) {
   int strongest_planet_ships;
   vector<Planet> my_planets = pw->MyPlanets();
   for (int i = 0; i < my_planets.size(); ++i) {
-    int ships_needed_to_keep = ships_needed_to_keep_planet(my_planets[i]);
-    try_to_attack_from_planet(my_planets[i].PlanetID(), ships_needed_to_keep, turn);
+    int ships_to_send = ships_in_planet_available_to_send_out(my_planets[i]);
+    try_to_attack_from_planet(my_planets[i].PlanetID(), ships_to_send, turn);
   }
 }
 
-int ships_needed_to_keep_planet(Planet p) {
-  vector<int> ships_per_turn = compute_ships_available_per_turn_before_attacks(p);
-  ships_per_turn = compute_ships_available_per_turn_with_attacks(ships_per_turn, p);
-  int minimum_ships_in_planet_for_next_turns = 99999;
+int ships_in_planet_available_to_send_out(Planet p) {
+  vector<int> ships_per_turn = ships_available_in_planet_per_turn(p);
+  int ships_to_send = 99999;
   for(int i = 1; i < 50; i++) {
-    if(ships_per_turn[i] < minimum_ships_in_planet_for_next_turns)
-      minimum_ships_in_planet_for_next_turns = ships_per_turn[i];
+    if(ships_per_turn[i] < ships_to_send)
+      ships_to_send = ships_per_turn[i];
   }
-  if(minimum_ships_in_planet_for_next_turns < 0) return 0;
-  else return minimum_ships_in_planet_for_next_turns;
+  if(ships_to_send < 0) return 0;
+  else return ships_to_send;
+}
+
+vector<int> ships_available_in_planet_per_turn(Planet p) {
+  vector<int> ships_per_turn = compute_ships_available_per_turn_before_attacks(p);
+  return compute_ships_available_per_turn_with_attacks(ships_per_turn, p);
 }
 
 vector<int> compute_ships_available_per_turn_before_attacks(Planet p) {
@@ -156,8 +161,7 @@ double compute_score(int growth_rate, int distance, int num_ships, bool is_enemy
   double num_ships_score = 5000 / num_ships / 2;
   double distance_score = 1000 / distance;
   double enemy_bonus = 0;
-  /*  ofstream myfile;
-  myfile.open("output",ios::app);
+  /*  ofstream myfile; myfile.open("output",ios::app);
   myfile << growth_rate_score + num_ships_score + distance_score << " = " <<
     growth_rate << "("<<growth_rate_score<<")   + " << num_ships << " (" <<
     num_ships_score << ")   + " << distance << " (" << distance_score << ")\n";
