@@ -25,9 +25,7 @@ int main(int argc, char *argv[]) {
   std::string current_line;
   std::string map_data;
   int turn = 0;
-  //   ofstream myfile;
-  //   myfile.open("output");
-  //   myfile.close();
+  //ofstream myfile;myfile.open("output");myfile.close();
   while (true) {
     int c = std::cin.get();
     current_line += (char)c;
@@ -78,7 +76,7 @@ vector<int> compute_ships_available_per_turn_before_attacks(Planet p) {
   vector<int> ships_available_per_turn(50);
   ships_available_per_turn[0] = p.NumShips();
   for(int i = 1; i < 50; i++) {
-    ships_available_per_turn[i] = ships_available_per_turn[i-1] + p.NumShips();
+    ships_available_per_turn[i] = ships_available_per_turn[i-1] + p.GrowthRate();
   }
   return ships_available_per_turn;
 }
@@ -87,10 +85,9 @@ vector<int> compute_ships_available_per_turn_with_attacks(vector<int> ships_per_
   vector<Fleet> enemy_fleets = pw->EnemyFleets();
   for(vector<Fleet>::iterator it = enemy_fleets.begin(); it < enemy_fleets.end(); ++it) {
     if(it->DestinationPlanet() == p.PlanetID())
-      ships_per_turn[it->TurnsRemaining()] -= it->NumShips();
-  }
-  for(int i = 1; i < 50; i++) {
-    ships_per_turn[i] -= ships_per_turn[i-1];
+      for(int i = it->TurnsRemaining(); i < 50; i++) {
+	ships_per_turn[i] -= it->NumShips();
+      }
   }
   return ships_per_turn;
 }
