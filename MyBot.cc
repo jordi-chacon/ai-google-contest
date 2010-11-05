@@ -74,6 +74,15 @@ int ships_needed_to_keep_planet(Planet p) {
   else return minimum_ships_in_planet_for_next_turns;
 }
 
+vector<int> compute_ships_available_per_turn_before_attacks(Planet p) {
+  vector<int> ships_available_per_turn(50);
+  ships_available_per_turn[0] = p.NumShips();
+  for(int i = 1; i < 50; i++) {
+    ships_available_per_turn[i] = ships_available_per_turn[i-1] + p.NumShips();
+  }
+  return ships_available_per_turn;
+}
+
 vector<int> compute_ships_available_per_turn_with_attacks(vector<int> ships_per_turn, Planet p) {
   vector<Fleet> enemy_fleets = pw->EnemyFleets();
   for(vector<Fleet>::iterator it = enemy_fleets.begin(); it < enemy_fleets.end(); ++it) {
@@ -84,15 +93,6 @@ vector<int> compute_ships_available_per_turn_with_attacks(vector<int> ships_per_
     ships_per_turn[i] -= ships_per_turn[i-1];
   }
   return ships_per_turn;
-}
-
-vector<int> compute_ships_available_per_turn_before_attacks(Planet p) {
-  vector<int> ships_available_per_turn(50);
-  ships_available_per_turn[0] = p.NumShips();
-  for(int i = 1; i < 50; i++) {
-    ships_available_per_turn[i] = ships_available_per_turn[i-1] + p.NumShips();
-  }
-  return ships_available_per_turn;
 }
 
 void try_to_attack_from_planet(int my_planet, int available_ships_for_attack, int turn) {
