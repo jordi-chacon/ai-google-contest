@@ -7,16 +7,18 @@ using namespace std;
 
 PlanetWars* pw;
 
-double compute_score(int growth_rate, int num_ships, int distance, bool is_enemy);
-bool is_enough_fleets_going_to_planet(vector<Fleet> fleets, Planet p);
-bool is_neutral_planet_with_many_fleets(Planet p);
-bool is_stupid_to_go_to_planet(Planet p, int turn);
-void send_ships(int my_planet, int my_planet_ships, int turn);
-vector<int> compute_ships_available_per_turn_before_attacks(Planet p);
-vector<int> compute_ships_available_per_turn_with_attacks(vector<int> ships_per_turn, Planet p);
-int ships_needed_to_keep_planet(Planet p);
-void try_attack_planets(int turn);
 void DoTurn(int turn);
+void try_attack_planets(int turn);
+int ships_needed_to_keep_planet(Planet p);
+vector<int> compute_ships_available_per_turn_with_attacks(vector<int> ships_per_turn, Planet p);
+vector<int> compute_ships_available_per_turn_before_attacks(Planet p);
+void try_to_attack_from_planet(int my_planet, int available_ships_for_attack, int turn);
+vector<PlanetScore> compute_planets_list_sorted_by_score(int turn, int my_planet);
+void decide_where_to_attack(int my_planet, int ships_for_attack, vector<PlanetScore> ps_score);
+bool is_enough_fleets_attacking_planet(vector<Fleet> fleets, Planet p);
+bool is_stupid_to_go_to_planet(Planet p, int turn);
+bool is_neutral_planet_with_many_fleets(Planet p);
+double compute_score(int growth_rate, int distance, int num_ships, bool is_enemy);
 
 
 int main(int argc, char *argv[]) {
@@ -56,7 +58,7 @@ void try_attack_planets(int turn) {
   vector<Planet> my_planets = pw->MyPlanets();
   for (int i = 0; i < my_planets.size(); ++i) {
     int ships_needed_to_keep = ships_needed_to_keep_planet(my_planets[i]);
-    send_ships(my_planets[i].PlanetID(), ships_needed_to_keep, turn);
+    try_to_attack_from_planet(my_planets[i].PlanetID(), ships_needed_to_keep, turn);
   }
 }
 
@@ -93,45 +95,45 @@ vector<int> compute_ships_available_per_turn_before_attacks(Planet p) {
   return ships_available_per_turn;
 }
 
-void send_ships(int my_planet, int my_planet_ships, int turn) {
-  // (1) Find most interesting planets to send fleets
+void try_to_attack_from_planet(int my_planet, int available_ships_for_attack, int turn) {
+  vector<PlanetScore> planets_score = compute_planets_list_sorted_by_score(turn, my_planet);
+  decide_where_to_attack(my_planet, available_ships_for_attack, planets_score);
+}
+
+vector<PlanetScore> compute_planets_list_sorted_by_score(int turn, int my_planet) {
   vector<Planet> not_my_planets = pw->NotMyPlanets();
   vector<PlanetScore> not_my_planets_score;
-  for(vector<Planet>::const_iterator it = not_my_planets.begin();
-      it < not_my_planets.end(); ++it) {
+  for(vector<Planet>::const_iterator it = not_my_planets.begin(); it < not_my_planets.end(); ++it) {
     if(!is_stupid_to_go_to_planet(*it, turn)) {
-      int num_ships = it->NumShips();
-      int growth_rate = it->GrowthRate();
-      int distance = pw->Distance(it->PlanetID(), my_planet);
-      double score = compute_score(growth_rate, num_ships, distance,
-				   it->Owner() == 2);
+      double score = compute_score(it->GrowthRate(), pw->Distance(it->PlanetID(), my_planet),
+				   it->NumShips(), it->Owner() == 2);
       PlanetScore* ps = new PlanetScore(*it, score);
       not_my_planets_score.push_back(*ps);
     }
   }
   sort(not_my_planets_score.begin(), not_my_planets_score.end());
+  return not_my_planets_score;
+}
 
-  // (2) Send ships from my planet to the weakest planets that I don't own
-  // and that I haven't seen fleets to it
+void decide_where_to_attack(int my_planet, int ships_for_attack, vector<PlanetScore> planets_score) {
   vector<Fleet> fleets = pw->Fleets();
-  for(vector<PlanetScore>::iterator it = not_my_planets_score.begin();
-      it < not_my_planets_score.end(); ++it) {
+  for(vector<PlanetScore>::iterator it = planets_score.begin(); it < planets_score.end(); ++it) {
     Planet p = *(it->GetPlanet());
-    if(!is_enough_fleets_going_to_planet(fleets, p)) {
-      if(p.GrowthRate() == 5 && my_planet_ships - 5 > p.NumShips()) {
-	pw->IssueOrder(my_planet, p.PlanetID(), my_planet_ships - 5);
-	my_planet_ships = 5;
+    if(!is_enough_fleets_attacking_planet(fleets, p)) {
+      if(p.GrowthRate() == 5 && ships_for_attack - 5 > p.NumShips()) {
+	pw->IssueOrder(my_planet, p.PlanetID(), ships_for_attack - 5);
+	ships_for_attack = 5;
       }
-      else if(my_planet_ships > p.NumShips()*2 + 5) {
+      else if(ships_for_attack > p.NumShips()*2 + 5) {
 	pw->IssueOrder(my_planet, p.PlanetID(), p.NumShips()*2);
-	my_planet_ships -= p.NumShips()*2;
+	ships_for_attack -= p.NumShips()*2;
       }
       else break;
     }
   }
 }
 
-bool is_enough_fleets_going_to_planet(vector<Fleet> fleets, Planet p) {
+bool is_enough_fleets_attacking_planet(vector<Fleet> fleets, Planet p) {
   int fleet_sum = 0;
   for(vector<Fleet>::const_iterator it = fleets.begin(); it < fleets.end(); ++it) {
     if(it->DestinationPlanet() == p.PlanetID() && it->Owner() == 1)
@@ -150,7 +152,7 @@ bool is_neutral_planet_with_many_fleets(Planet p) {
   return p.Owner() == 0 && p.NumShips() > 30;
 }
 
-double compute_score(int growth_rate, int num_ships, int distance, bool is_enemy) {
+double compute_score(int growth_rate, int distance, int num_ships, bool is_enemy) {
   if(num_ships == 0) num_ships = 1;
   if(distance == 0) distance = 1;
   double growth_rate_score = 60 * growth_rate;
