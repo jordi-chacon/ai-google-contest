@@ -73,7 +73,6 @@ int main(int argc, char *argv[]) {
 
 void DoTurn(int turn) {
   initialise();
-  //  print_planets_state();
   defense();
   attack(turn);
   clear_maps();
@@ -124,9 +123,9 @@ vector<int> compute_ships_available_per_turn_with_moving_fleet(vector<int> ships
   for(vector<Fleet>::iterator it = my_fleets.begin(); it < my_fleets.end(); ++it) {
     if(it->DestinationPlanet() == p.PlanetID())
       for(int i = it->TurnsRemaining(); i < 50; i++) {
-	 ships_per_turn[i] += it->NumShips();
+	ships_per_turn[i] += it->NumShips();
       }
-      }*/
+  }*/
   return ships_per_turn;
 }
 
@@ -197,7 +196,7 @@ void try_to_send_ships_to_unsafe_planet(Planet unsafe_planet) {
   }
   for(map<int, PlanetState*>::iterator it = planets_state.begin(); it != planets_state.end(); ++it) {
     PlanetState* ps = it->second;
-    int available_ships_now = min(ps->GetPlanet()->NumShips(), ps->GetAvailableShips() - 5);
+    int available_ships_now = min(ps->GetPlanet()->NumShips(), ps->GetAvailableShips());
     if(available_ships_now > 5) {
       int ships_to_send = min(ships_needed, available_ships_now - 5);
       ships_needed -= ships_to_send;
