@@ -8,6 +8,7 @@ using namespace std;
 
 PlanetWars* pw;
 map<int, vector<int> > available_ships_in_planets_per_turn;
+map<int, Planet> my_planets_map;
 map<int, int> my_unsafe_planets; //<planet_id, turn_in_which_planet_is_lost>
 map<int, int> available_ships_in_my_planets; //<planet_id, available_ships>
 
@@ -16,6 +17,7 @@ void DoTurn(int turn);
 // INITIALIZE
 void initialise();
 void initialise_ships_available_per_turn_and_planet();
+void initialise_my_planets();
 vector<int> ships_available_in_planet_per_turn(Planet p);
 vector<int> compute_ships_available_per_turn_based_on_growth_rate(Planet p);
 vector<int> compute_ships_available_per_turn_with_moving_fleet(vector<int> ships_per_turn, Planet p);
@@ -26,6 +28,7 @@ int available_ships_in_my_planet(Planet p);
 
 // DEFENSE
 void defense();
+void try_to_send_ships_to_unsafe_planet(Planet unsafe_planet);
 
 // ATTACK
 void attack(int turn);
@@ -36,6 +39,10 @@ bool is_enough_fleets_attacking_planet(vector<Fleet> fleets, Planet p);
 bool is_stupid_to_go_to_planet(Planet p, int turn);
 bool is_neutral_planet_with_many_fleets(Planet p);
 double compute_score(int growth_rate, int distance, int num_ships, bool is_enemy);
+
+// UTILS
+int min(int a, int b);
+void clear_maps();
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -68,6 +75,7 @@ void DoTurn(int turn) {
   initialise();
   defense();
   attack(turn);
+  clear_maps();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -75,6 +83,7 @@ void DoTurn(int turn) {
 /////////////////////////////////////////////////////////////////////////////////////////
 void initialise() {
   initialise_ships_available_per_turn_and_planet();
+  initialise_my_planets();
   initialise_my_unsafe_planets();
   initialise_available_ships_in_my_planets();
 }
@@ -83,6 +92,13 @@ void initialise_ships_available_per_turn_and_planet() {
   vector<Planet> my_planets = pw->MyPlanets();
   for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
     available_ships_in_planets_per_turn[it->PlanetID()] = ships_available_in_planet_per_turn(*it);
+  }
+}
+
+void initialise_my_planets() {
+  vector<Planet> my_planets = pw->MyPlanets();
+  for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
+    my_planets_map.insert(pair<int, Planet>(it->PlanetID(), Planet(*it)));
   }
 }
 
@@ -151,15 +167,36 @@ int available_ships_in_my_planet(Planet p) {
   }
   return available_ships;
 }
-
+ 
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // D E F E N S E
 /////////////////////////////////////////////////////////////////////////////////////////
 void defense() {
-  
+  for(map<int, int>::iterator it = my_unsafe_planets.begin(); it != my_unsafe_planets.end(); ++it) {
+    Planet p = (my_planets_map.find(it->first))->second;
+    if(p.GrowthRate() >= 3) {
+      try_to_send_ships_to_unsafe_planet(p);
+    }
+  }
 }
 
+void try_to_send_ships_to_unsafe_planet(Planet unsafe_planet) {
+  int ships_needed = -1 * available_ships_in_my_planets[unsafe_planet.PlanetID()];
+  if(ships_needed <= 0) return;
+  for(map<int, int>::iterator it = available_ships_in_my_planets.begin();
+      it != available_ships_in_my_planets.end(); ++it) {
+    int available_ships_now = min(my_planets_map.find(it->first)->second.NumShips(), it->second - 5);
+    if(available_ships_now > 5) {
+      Planet sender = (my_planets_map.find(it->first))->second;
+      int ships_to_send = min(ships_needed, available_ships_now - 5);
+      ships_needed -= ships_to_send;
+      available_ships_in_my_planets[it->first] -= ships_to_send;
+      pw->IssueOrder(it->first, unsafe_planet.PlanetID(), ships_to_send);
+      if(ships_needed <= 0) break;
+    }
+  }
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // A T T A C K
@@ -245,4 +282,20 @@ double compute_score(int growth_rate, int distance, int num_ships, bool is_enemy
     num_ships_score << ")   + " << distance << " (" << distance_score << ")\n";
     myfile.close();*/
   return growth_rate_score + num_ships_score + distance_score + enemy_bonus;
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// U T I L S
+/////////////////////////////////////////////////////////////////////////////////////////
+int min(int a, int b) {
+  if(a > b) return b;
+  else return a;
+}
+
+void clear_maps(){
+  available_ships_in_planets_per_turn.clear();
+  my_planets_map.clear();
+  my_unsafe_planets.clear();
+  available_ships_in_my_planets.clear();
 }
