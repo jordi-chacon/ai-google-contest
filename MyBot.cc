@@ -42,6 +42,7 @@ double compute_score(int growth_rate, int distance, int num_ships, bool is_enemy
 int min(int a, int b);
 void clear_maps();
 void print_planets_state();
+void print_planet_state(PlanetState* ps);
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -49,7 +50,7 @@ int main(int argc, char *argv[]) {
   std::string current_line;
   std::string map_data;
   int turn = 0;
-  ofstream myfile;myfile.open("output");myfile.close();
+  //  ofstream myfile;myfile.open("output");myfile.close();
   while (true) {
     int c = std::cin.get();
     current_line += (char)c;
@@ -130,11 +131,9 @@ vector<int> compute_ships_available_per_turn_with_moving_fleet(vector<int> ships
 }
 
 void initialise_my_planets() {
-  ofstream myfile; myfile.open("output",ios::app);
   vector<Planet> my_planets = pw->MyPlanets();
   for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
     PlanetState* ps = planets_state.find(it->PlanetID())->second;
-    myfile << "address: " << &(planets_state.find(it->PlanetID())->first) << " " << ps << "\n";
     ps->SetPlanet(new Planet(*it));
   }
 }
@@ -184,15 +183,18 @@ int available_ships_in_my_planet(Planet p) {
 void defense() {
   for(map<int, PlanetState*>::iterator it = planets_state.begin(); it != planets_state.end(); ++it) {
     Planet p = *(it->second->GetPlanet());
-    if(p.GrowthRate() >= 3) {
+    if(planets_state.find(p.PlanetID())->second->IsUnsafePlanet() && p.GrowthRate() >= 3) {
       try_to_send_ships_to_unsafe_planet(p);
     }
   }
 }
 
 void try_to_send_ships_to_unsafe_planet(Planet unsafe_planet) {
-  int ships_needed = -1 * planets_state.find(unsafe_planet.PlanetID())->second->GetAvailableShips();
-  if(ships_needed <= 0) return;
+  int ships_needed = -1 * planets_state.find(unsafe_planet.PlanetID())->second->GetAvailableShips() + 1;
+  if(ships_needed <= 0) {
+    // Planets that will be lost in this same turn, we can't do anything about it :(
+    return;
+  }
   for(map<int, PlanetState*>::iterator it = planets_state.begin(); it != planets_state.end(); ++it) {
     PlanetState* ps = it->second;
     int available_ships_now = min(ps->GetPlanet()->NumShips(), ps->GetAvailableShips() - 5);
@@ -309,17 +311,22 @@ void print_planets_state() {
   ofstream myfile; myfile.open("output",ios::app);
   for(map<int, PlanetState*>::iterator it = planets_state.begin(); it != planets_state.end(); ++it) {
     myfile << "PLANET: " << it->first <<"\n";
-    PlanetState* ps = it->second;
-    Planet p = *(ps->GetPlanet());
-    myfile << "address: " << &(it->first) << " " << it->second << "\n";
-    myfile << "is_unsafe: " << ps->GetUnsafePlanet() << "\n";
-    myfile << "is_unsafe_turn: " << ps->GetUnsafeInTurn() << "\n";
-    myfile << "available_ships: " << ps->GetAvailableShips() << "\n";
-    myfile << "num_ships: " << p.NumShips() << "\n";
-    vector<int>* available_ships_per_turn = ps->GetAvailableShipsPerTurn();
-    for(int i = 0; i < available_ships_per_turn->size(); ++i)
-      myfile << available_ships_per_turn->at(i) << " ";
+    print_planet_state(it->second);
   }
   myfile << "\n-----------------------------------\n";
+  myfile.close();
+}
+
+void print_planet_state(PlanetState* ps) {
+  ofstream myfile; myfile.open("output",ios::app);
+  Planet p = *(ps->GetPlanet());
+  myfile << "is_unsafe: " << ps->IsUnsafePlanet() << "\n";
+  myfile << "is_unsafe_turn: " << ps->GetUnsafeInTurn() << "\n";
+  myfile << "available_ships: " << ps->GetAvailableShips() << "\n";
+  myfile << "num_ships: " << p.NumShips() << "\n";
+  vector<int>* available_ships_per_turn = ps->GetAvailableShipsPerTurn();
+  for(int i = 0; i < available_ships_per_turn->size(); ++i)
+    myfile << available_ships_per_turn->at(i) << " ";
+  myfile << "------\n";
   myfile.close();
 }
