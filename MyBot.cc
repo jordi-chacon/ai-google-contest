@@ -4,13 +4,11 @@
 #include <map>
 #include "PlanetWars.h"
 #include "PlanetScore.h"
+#include "PlanetState.h"
 using namespace std;
 
 PlanetWars* pw;
-map<int, vector<int> > available_ships_in_planets_per_turn;
-map<int, Planet> my_planets_map;
-map<int, int> my_unsafe_planets; //<planet_id, turn_in_which_planet_is_lost>
-map<int, int> available_ships_in_my_planets; //<planet_id, available_ships>
+map<int, PlanetState*> planets_state;
 
 void DoTurn(int turn);
 
@@ -43,6 +41,7 @@ double compute_score(int growth_rate, int distance, int num_ships, bool is_enemy
 // UTILS
 int min(int a, int b);
 void clear_maps();
+void print_planets_state();
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -50,7 +49,7 @@ int main(int argc, char *argv[]) {
   std::string current_line;
   std::string map_data;
   int turn = 0;
-  //ofstream myfile;myfile.open("output");myfile.close();
+  ofstream myfile;myfile.open("output");myfile.close();
   while (true) {
     int c = std::cin.get();
     current_line += (char)c;
@@ -73,6 +72,7 @@ int main(int argc, char *argv[]) {
 
 void DoTurn(int turn) {
   initialise();
+  //  print_planets_state();
   defense();
   attack(turn);
   clear_maps();
@@ -91,14 +91,9 @@ void initialise() {
 void initialise_ships_available_per_turn_and_planet() {
   vector<Planet> my_planets = pw->MyPlanets();
   for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
-    available_ships_in_planets_per_turn[it->PlanetID()] = ships_available_in_planet_per_turn(*it);
-  }
-}
-
-void initialise_my_planets() {
-  vector<Planet> my_planets = pw->MyPlanets();
-  for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
-    my_planets_map.insert(pair<int, Planet>(it->PlanetID(), Planet(*it)));
+    PlanetState* ps = new PlanetState();
+    planets_state[it->PlanetID()] = ps;
+    ps->SetAvailableShipsPerTurn(ships_available_in_planet_per_turn(*it));
   }
 }
 
@@ -134,6 +129,16 @@ vector<int> compute_ships_available_per_turn_with_moving_fleet(vector<int> ships
   return ships_per_turn;
 }
 
+void initialise_my_planets() {
+  ofstream myfile; myfile.open("output",ios::app);
+  vector<Planet> my_planets = pw->MyPlanets();
+  for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
+    PlanetState* ps = planets_state.find(it->PlanetID())->second;
+    myfile << "address: " << &(planets_state.find(it->PlanetID())->first) << " " << ps << "\n";
+    ps->SetPlanet(new Planet(*it));
+  }
+}
+
 void initialise_my_unsafe_planets() {
   vector<Planet> my_planets = pw->MyPlanets();
   for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
@@ -142,10 +147,12 @@ void initialise_my_unsafe_planets() {
 }
 
 void check_and_maybe_set_as_my_unsafe_planet(Planet p) {
-  vector<int> ships_per_turn = available_ships_in_planets_per_turn[p.PlanetID()];
+  PlanetState* ps = planets_state.find(p.PlanetID())->second;
+  vector<int>* ships_per_turn = ps->GetAvailableShipsPerTurn();
   for(int turn = 0; turn < 50; turn++) {
-    if(ships_per_turn[turn] < 1) {
-      my_unsafe_planets[p.PlanetID()] = turn;
+    if(ships_per_turn->at(turn) < 1) {
+      ps->SetUnsafePlanet(true);
+      ps->SetUnsafeInTurn(turn);
       break;
     }
   }
@@ -154,27 +161,29 @@ void check_and_maybe_set_as_my_unsafe_planet(Planet p) {
 void initialise_available_ships_in_my_planets() {
   vector<Planet> my_planets = pw->MyPlanets();
   for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
-    available_ships_in_my_planets[it->PlanetID()] = available_ships_in_my_planet(*it);
+    PlanetState* ps = planets_state.find(it->PlanetID())->second;
+    ps->SetAvailableShips(available_ships_in_my_planet(*it));
   }
 }
 
 int available_ships_in_my_planet(Planet p) {
-  vector<int> ships_per_turn = available_ships_in_planets_per_turn[p.PlanetID()];
-  int available_ships = 99999;
+  PlanetState* ps = planets_state.find(p.PlanetID())->second;
+  vector<int>* ships_per_turn = ps->GetAvailableShipsPerTurn();
+  int available_ships = 999999;
   for(int i = 1; i < 50; i++) {
-    if(ships_per_turn[i] < available_ships)
-      available_ships = ships_per_turn[i];
+    if(ships_per_turn->at(i) < available_ships)
+      available_ships = ships_per_turn->at(i);
   }
   return available_ships;
 }
- 
+
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // D E F E N S E
 /////////////////////////////////////////////////////////////////////////////////////////
 void defense() {
-  for(map<int, int>::iterator it = my_unsafe_planets.begin(); it != my_unsafe_planets.end(); ++it) {
-    Planet p = (my_planets_map.find(it->first))->second;
+  for(map<int, PlanetState*>::iterator it = planets_state.begin(); it != planets_state.end(); ++it) {
+    Planet p = *(it->second->GetPlanet());
     if(p.GrowthRate() >= 3) {
       try_to_send_ships_to_unsafe_planet(p);
     }
@@ -182,16 +191,15 @@ void defense() {
 }
 
 void try_to_send_ships_to_unsafe_planet(Planet unsafe_planet) {
-  int ships_needed = -1 * available_ships_in_my_planets[unsafe_planet.PlanetID()];
+  int ships_needed = -1 * planets_state.find(unsafe_planet.PlanetID())->second->GetAvailableShips();
   if(ships_needed <= 0) return;
-  for(map<int, int>::iterator it = available_ships_in_my_planets.begin();
-      it != available_ships_in_my_planets.end(); ++it) {
-    int available_ships_now = min(my_planets_map.find(it->first)->second.NumShips(), it->second - 5);
+  for(map<int, PlanetState*>::iterator it = planets_state.begin(); it != planets_state.end(); ++it) {
+    PlanetState* ps = it->second;
+    int available_ships_now = min(ps->GetPlanet()->NumShips(), ps->GetAvailableShips() - 5);
     if(available_ships_now > 5) {
-      Planet sender = (my_planets_map.find(it->first))->second;
       int ships_to_send = min(ships_needed, available_ships_now - 5);
       ships_needed -= ships_to_send;
-      available_ships_in_my_planets[it->first] -= ships_to_send;
+      ps->SetAvailableShips(ps->GetAvailableShips() - ships_to_send);
       pw->IssueOrder(it->first, unsafe_planet.PlanetID(), ships_to_send);
       if(ships_needed <= 0) break;
     }
@@ -206,9 +214,9 @@ void attack(int turn) {
   int strongest_planet_ships;
   vector<Planet> my_planets = pw->MyPlanets();
   for (int i = 0; i < my_planets.size(); ++i) {
-    if(available_ships_in_my_planets[my_planets[i].PlanetID()] > 0)
-      try_to_attack_from_planet(my_planets[i].PlanetID(),
-				available_ships_in_my_planets[my_planets[i].PlanetID()], turn);
+    PlanetState* ps = planets_state.find(my_planets[i].PlanetID())->second;
+    if(ps->GetAvailableShips() > 0)
+      try_to_attack_from_planet(my_planets[i].PlanetID(), ps->GetAvailableShips(), turn);
   }
 }
 
@@ -294,8 +302,24 @@ int min(int a, int b) {
 }
 
 void clear_maps(){
-  available_ships_in_planets_per_turn.clear();
-  my_planets_map.clear();
-  my_unsafe_planets.clear();
-  available_ships_in_my_planets.clear();
+  planets_state.clear();
+}
+
+void print_planets_state() {
+  ofstream myfile; myfile.open("output",ios::app);
+  for(map<int, PlanetState*>::iterator it = planets_state.begin(); it != planets_state.end(); ++it) {
+    myfile << "PLANET: " << it->first <<"\n";
+    PlanetState* ps = it->second;
+    Planet p = *(ps->GetPlanet());
+    myfile << "address: " << &(it->first) << " " << it->second << "\n";
+    myfile << "is_unsafe: " << ps->GetUnsafePlanet() << "\n";
+    myfile << "is_unsafe_turn: " << ps->GetUnsafeInTurn() << "\n";
+    myfile << "available_ships: " << ps->GetAvailableShips() << "\n";
+    myfile << "num_ships: " << p.NumShips() << "\n";
+    vector<int>* available_ships_per_turn = ps->GetAvailableShipsPerTurn();
+    for(int i = 0; i < available_ships_per_turn->size(); ++i)
+      myfile << available_ships_per_turn->at(i) << " ";
+  }
+  myfile << "\n-----------------------------------\n";
+  myfile.close();
 }
