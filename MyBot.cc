@@ -17,8 +17,8 @@ void initialise();
 void initialise_ships_available_per_turn_and_planet();
 void initialise_my_planets();
 vector<int> ships_available_in_planet_per_turn(Planet p);
-vector<int> compute_ships_available_per_turn_based_on_growth_rate(Planet p);
-vector<int> compute_ships_available_per_turn_with_moving_fleet(vector<int> ships_per_turn, Planet p);
+vector<int> compute_ships_available_per_turn_with_moving_fleet(Planet p);
+vector<int> compute_ships_available_per_turn_based_on_growth_rate(vector<int> ships_per_turn, Planet p);
 void initialise_my_unsafe_planets();
 void check_and_maybe_set_as_my_unsafe_planet(Planet p);
 void initialise_available_ships_in_my_planets();
@@ -98,34 +98,34 @@ void initialise_ships_available_per_turn_and_planet() {
 }
 
 vector<int> ships_available_in_planet_per_turn(Planet p) {
-  vector<int> ships_per_turn = compute_ships_available_per_turn_based_on_growth_rate(p);
-  return compute_ships_available_per_turn_with_moving_fleet(ships_per_turn, p);
+  vector<int> ships_per_turn = compute_ships_available_per_turn_with_moving_fleet(p);
+  return compute_ships_available_per_turn_based_on_growth_rate(ships_per_turn, p);
 }
 
-vector<int> compute_ships_available_per_turn_based_on_growth_rate(Planet p) {
-  vector<int> ships_available_per_turn(50);
-  ships_available_per_turn[0] = p.NumShips();
-  for(int i = 1; i < 50; i++) {
-    ships_available_per_turn[i] = ships_available_per_turn[i-1] + p.GrowthRate();
-  }
-  return ships_available_per_turn;
-}
-
-vector<int> compute_ships_available_per_turn_with_moving_fleet(vector<int> ships_per_turn, Planet p) {
+vector<int> compute_ships_available_per_turn_with_moving_fleet(Planet p) {
+  vector<int> ships_per_turn(50, p.NumShips());
   vector<Fleet> enemy_fleets = pw->EnemyFleets();
   for(vector<Fleet>::iterator it = enemy_fleets.begin(); it < enemy_fleets.end(); ++it) {
     if(it->DestinationPlanet() == p.PlanetID())
       for(int i = it->TurnsRemaining(); i < 50; i++) {
-	 ships_per_turn[i] -= it->NumShips();
+	ships_per_turn[i] -= it->NumShips();
       }
   }
-  /*vector<Fleet> my_fleets = pw->MyFleets();
+  vector<Fleet> my_fleets = pw->MyFleets();
   for(vector<Fleet>::iterator it = my_fleets.begin(); it < my_fleets.end(); ++it) {
     if(it->DestinationPlanet() == p.PlanetID())
       for(int i = it->TurnsRemaining(); i < 50; i++) {
 	ships_per_turn[i] += it->NumShips();
       }
-  }*/
+  }
+  return ships_per_turn;
+}
+
+vector<int> compute_ships_available_per_turn_based_on_growth_rate(vector<int> ships_per_turn, Planet p) {
+  for(int i = 1; i < 50; i++) {
+    if(ships_per_turn[i-1] > 0) ships_per_turn[i] += p.GrowthRate();
+    else if(ships_per_turn[i-1] < 0) ships_per_turn[i] -= p.GrowthRate();;
+  }
   return ships_per_turn;
 }
 
@@ -168,7 +168,7 @@ int available_ships_in_my_planet(Planet p) {
   PlanetState* ps = planets_state.find(p.PlanetID())->second;
   vector<int>* ships_per_turn = ps->GetAvailableShipsPerTurn();
   int available_ships = 999999;
-  for(int i = 1; i < 50; i++) {
+  for(int i = 0; i < 50; i++) {
     if(ships_per_turn->at(i) < available_ships)
       available_ships = ships_per_turn->at(i);
   }
