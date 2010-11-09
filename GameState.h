@@ -21,7 +21,9 @@ class GameState {
   bool AreSafePlanetsWithAvailableShips();
   int GetNeededShipsToSafeUnsafePlanet(int planet_id);
   int GetAvailableShips(int planet_id);
+  vector<int>* GetAvailableShipsPerTurn(int planet_id);
   int GetPlanetLostInTurn(int planet_id);
+  void SetAvailableShipsPerTurn(int planet_id, vector<int> v);
   void DecreaseAvailableShips(int planet_id, int ships_sent);
   void PrintGameState();
   void PrintPlanetState(int planet_id);

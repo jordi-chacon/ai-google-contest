@@ -18,7 +18,10 @@ class Defense {
  private:
   vector<Planet*> TryToSendHelpBasic(vector<Planet*> unsafe_planets);
   void SendHelp(int unsafe_planet_id, vector<pair<int, int> > help);
-
+  void TryToSendHelpComplex(vector<Planet*> still_unsafe_planets);
+  map<int, pair<int, int> > ComputeAllPossibleHelp(Planet* p);
+  void SendHelpIfWillBeSaved(Planet* p, map<int, pair<int, int> > help);
+  void CopyAvailableShipsPerTurnVector(vector<int> dst, int planet_id);
   PlanetWars* pw;
   GameState* game_state;
 };
