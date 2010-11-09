@@ -49,3 +49,7 @@ int PlanetState::GetAvailableShips() {
   return available_ships;
 }
 
+int PlanetState::GetNeededShipsToSafe() {
+  if(unsafe_planet) return available_ships_per_turn->at(unsafe_in_turn) - 1;
+  else return 0;
+}

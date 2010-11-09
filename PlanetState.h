@@ -17,6 +17,7 @@ class PlanetState {
   bool IsUnsafePlanet();
   int GetUnsafeInTurn();
   int GetAvailableShips();
+  int GetNeededShipsToSafe();
 
  private:
   Planet* planet;

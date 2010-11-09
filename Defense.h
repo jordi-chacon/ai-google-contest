@@ -13,10 +13,11 @@ using namespace std;
 
 class Defense {
  public:
-  void defense(PlanetWars* pw, GameState* game_state);
+  void DoDefense(PlanetWars* pw, GameState* game_state);
 
  private:
-  void try_to_send_ships_to_unsafe_planet(Planet unsafe_planet);
+  vector<Planet*> TryToSendHelpBasic(vector<Planet*> unsafe_planets);
+  void SendHelp(int unsafe_planet_id, vector<pair<int, int> > help);
 
   PlanetWars* pw;
   GameState* game_state;

@@ -38,8 +38,8 @@ int main(int argc, char *argv[]) {
 }
 
 void DoTurn(int turn) {
-  game_state.init(pw);
-  d.defense(pw, &game_state);
-  a.attack(pw, &game_state, turn);
-  game_state.clear();
+  game_state.Init(pw);
+  d.DoDefense(pw, &game_state);
+  a.DoAttack(pw, &game_state, turn);
+  game_state.Clear();
 }

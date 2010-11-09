@@ -11,26 +11,33 @@ using namespace std;
 
 class GameState {
  public:
-  void init(PlanetWars* p);
-  void clear();
-  PlanetState* get_planet_state(int planet_id);
-  std::vector<Planet*> get_unsafe_planets();
-  std::vector<Planet*> get_safe_planets();
-  void print_game_state();
-  void print_planet_state(int planet_id);
-  void print_planet_state(PlanetState* ps);
+  void Init(PlanetWars* p);
+  void Clear();
+  PlanetState* GetPlanetState(int planet_id);
+  std::vector<Planet*> GetUnsafePlanets();
+  std::vector<Planet*> GetUnsafePlanetsWithGrowthRate(int gr);
+  std::vector<Planet*> GetSafePlanets();
+  std::vector<Planet*> GetSafePlanetsSortedByDistanceToPlanet(int planet_id);
+  bool AreSafePlanetsWithAvailableShips();
+  int GetNeededShipsToSafeUnsafePlanet(int planet_id);
+  int GetAvailableShips(int planet_id);
+  int GetPlanetLostInTurn(int planet_id);
+  void DecreaseAvailableShips(int planet_id, int ships_sent);
+  void PrintGameState();
+  void PrintPlanetState(int planet_id);
+  void PrintPlanetState(PlanetState* ps);
 
  private:
-  void init_ships_available_per_turn_and_planet();
-  void init_my_planets();
-  std::vector<int> ships_available_in_planet_per_turn(Planet p);
-  std::vector<int> compute_ships_available_per_turn_with_moving_fleet(Planet p);
-  std::vector<int> compute_ships_available_per_turn_based_on_growth_rate(std::vector<int> ships_per_turn,
+  void InitShipsAvailablePerTurnAndPlanet();
+  void InitMyPlanets();
+  std::vector<int> ShipsAvailableInPlanetPerTurn(Planet p);
+  std::vector<int> ComputeShipsAvailablePerTurnWithMovingFleet(Planet p);
+  std::vector<int> ComputeShipsAvailablePerTurnBasedOnGrowthRate(std::vector<int> ships_per_turn,
 									 Planet p);
-  void init_my_unsafe_planets();
-  void check_and_maybe_set_as_my_unsafe_planet(Planet p);
-  void init_available_ships_in_my_planets();
-  int available_ships_in_my_planet(Planet p);
+  void InitMyUnsafePlanets();
+  void CheckAndMaybeSetAsMyUnsafePlanet(Planet p);
+  void InitAvailableShipsInMyPlanets();
+  int AvailableShipsInMyPlanet(Planet p);
 
   std::map<int, PlanetState*> planets_state;
   PlanetWars* pw;

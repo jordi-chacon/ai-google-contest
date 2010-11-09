@@ -1,30 +1,46 @@
+#include <algorithm>
 #include "Defense.h"
 
-void Defense::defense(PlanetWars* p, GameState* gs) {
+void Defense::DoDefense(PlanetWars* p, GameState* gs) {
   pw = p;
   game_state = gs;
-  vector<Planet*> unsafe_planets = game_state->get_unsafe_planets();
-  for(vector<Planet*>::iterator it = unsafe_planets.begin(); it < unsafe_planets.end(); ++it) {
-    if((*it)->GrowthRate() >= 3) try_to_send_ships_to_unsafe_planet(**it);
+  for(int growth_rate = 5; growth_rate > 0; growth_rate--) {
+    if(game_state->AreSafePlanetsWithAvailableShips()) {
+      vector<Planet*> unsafe_planets = game_state->GetUnsafePlanetsWithGrowthRate(growth_rate);
+      vector<Planet*> still_unsafe_planets = TryToSendHelpBasic(unsafe_planets);
+    }
   }
 }
 
-void Defense::try_to_send_ships_to_unsafe_planet(Planet unsafe_planet) {
-  int ships_needed = -1 * game_state->get_planet_state(unsafe_planet.PlanetID())->GetAvailableShips() + 1;
-  if(ships_needed <= 0) {
-    // Planets that will be lost in this same turn, we can't do anything about it :(
-    return;
-  }
-  vector<Planet*> safe_planets = game_state->get_safe_planets();
-  for(vector<Planet*>::iterator it = safe_planets.begin(); it < safe_planets.end(); ++it) {
-    PlanetState* ps = game_state->get_planet_state((*it)->PlanetID());
-    int available_ships_now = min((*it)->NumShips(), ps->GetAvailableShips());
-    if(available_ships_now > 5) {
-      int ships_to_send = min(ships_needed, available_ships_now - 5);
-      ships_needed -= ships_to_send;
-      ps->SetAvailableShips(ps->GetAvailableShips() - ships_to_send);
-      pw->IssueOrder((*it)->PlanetID(), unsafe_planet.PlanetID(), ships_to_send);
-      if(ships_needed <= 0) break;
+vector<Planet*> Defense::TryToSendHelpBasic(vector<Planet*> unsafe_planets) {
+  for(vector<Planet*>::iterator it = unsafe_planets.begin(); it < unsafe_planets.end(); ++it) {
+    int unsafe_planet_id = (*it)->PlanetID();
+    vector<pair<int, int> > help;
+    int ships_needed = game_state->GetNeededShipsToSafeUnsafePlanet(unsafe_planet_id);
+    vector<Planet*> safe_planets = game_state->GetSafePlanetsSortedByDistanceToPlanet(unsafe_planet_id);
+    for(vector<Planet*>::iterator it2 = safe_planets.begin(); it2 < safe_planets.end(); ++it2) {
+      int safe_planet_id = (*it2)->PlanetID();
+      if(pw->Distance(unsafe_planet_id, safe_planet_id) <= game_state->GetPlanetLostInTurn(unsafe_planet_id)) {
+	int to_send = min(ships_needed, game_state->GetAvailableShips(safe_planet_id));
+	help.push_back(pair<int, int>(safe_planet_id, to_send));
+	ships_needed -= to_send;
+	if(ships_needed == 0) {
+	  SendHelp(unsafe_planet_id, help);
+	  unsafe_planets.erase(it);
+	  break;
+	}
+      }
+      else break;
     }
+  }
+  return unsafe_planets;
+}
+
+void Defense::SendHelp(int unsafe_planet_id, vector<pair<int, int> > help) {
+  for(vector<pair<int, int> >::iterator it = help.begin(); it < help.end(); ++it) {
+    int sender_id = it->first;
+    int ships_to_send = it->second;
+    pw->IssueOrder(sender_id, unsafe_planet_id, ships_to_send);
+    game_state->DecreaseAvailableShips(sender_id, ships_to_send);
   }
 }
