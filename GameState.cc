@@ -4,9 +4,9 @@
 void GameState::Init(PlanetWars* p) {
   pw = p;
   InitShipsAvailablePerTurnAndPlanet();
-  InitMyPlanets();
+  InitPlanets();
   InitMyUnsafePlanets();
-  InitAvailableShipsInMyPlanets();
+  InitAvailableShipsInPlanets();
 }
 
 void GameState::Clear() {
@@ -122,11 +122,13 @@ void GameState::PrintPlanetState(PlanetState* ps) {
 ////////  P R I V A T E //////////////////////////////////////////////////////////////
 
 void GameState::InitShipsAvailablePerTurnAndPlanet() {
-  vector<Planet> my_planets = pw->MyPlanets();
-  for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
-    PlanetState* ps = new PlanetState();
-    planets_state[it->PlanetID()] = ps;
-    ps->SetAvailableShipsPerTurn(ShipsAvailableInPlanetPerTurn(*it));
+  vector<Planet> planets = pw->Planets();
+  for(vector<Planet>::iterator it = planets.begin(); it < planets.end(); ++it) {
+    if(it->Owner() != 0) {
+      PlanetState* ps = new PlanetState();
+      planets_state[it->PlanetID()] = ps;
+      ps->SetAvailableShipsPerTurn(ShipsAvailableInPlanetPerTurn(*it));
+    }
   }
 }
 
@@ -137,19 +139,18 @@ vector<int> GameState::ShipsAvailableInPlanetPerTurn(Planet p) {
 
 vector<int> GameState::ComputeShipsAvailablePerTurnWithMovingFleet(Planet p) {
   vector<int> ships_per_turn(50, p.NumShips());
-  vector<Fleet> enemy_fleets = pw->EnemyFleets();
-  for(vector<Fleet>::iterator it = enemy_fleets.begin(); it < enemy_fleets.end(); ++it) {
-    if(it->DestinationPlanet() == p.PlanetID())
-      for(int i = it->TurnsRemaining(); i < 50; i++) {
-	ships_per_turn[i] -= it->NumShips();
-      }
-      }
-  vector<Fleet> my_fleets = pw->MyFleets();
-  for(vector<Fleet>::iterator it = my_fleets.begin(); it < my_fleets.end(); ++it) {
-    if(it->DestinationPlanet() == p.PlanetID())
-      for(int i = it->TurnsRemaining(); i < 50; i++) {
-	ships_per_turn[i] += it->NumShips();
-      }
+  vector<Fleet> fleets = pw->Fleets();
+  for(vector<Fleet>::iterator it = fleets.begin(); it < fleets.end(); ++it) {
+    if(it->DestinationPlanet() == p.PlanetID()) {
+      if(p.Owner() == 1 && it->Owner() == 1 || p.Owner() > 1 && it->Owner() > 1)
+	for(int i = it->TurnsRemaining(); i < 50; i++) {
+	  ships_per_turn[i] += it->NumShips();
+	}
+      else
+	for(int i = it->TurnsRemaining(); i < 50; i++) {
+	  ships_per_turn[i] -= it->NumShips();
+	}
+    }
   }
   return ships_per_turn;
 }
@@ -167,9 +168,9 @@ vector<int> GameState::ComputeShipsAvailablePerTurnBasedOnGrowthRate(vector<int>
   return ships_per_turn;
 }
 
-void GameState::InitMyPlanets() {
-  vector<Planet> my_planets = pw->MyPlanets();
-  for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
+void GameState::InitPlanets() {
+  vector<Planet> planets = pw->Planets();
+  for(vector<Planet>::iterator it = planets.begin(); it < planets.end(); ++it) {
     PlanetState* ps = planets_state.find(it->PlanetID())->second;
     ps->SetPlanet(new Planet(*it));
   }
@@ -194,16 +195,15 @@ void GameState::CheckAndMaybeSetAsMyUnsafePlanet(Planet p) {
   }
 }
 
-void GameState::InitAvailableShipsInMyPlanets() {
-  vector<Planet> my_planets = pw->MyPlanets();
-  for(vector<Planet>::iterator it = my_planets.begin(); it < my_planets.end(); ++it) {
-    PlanetState* ps = planets_state.find(it->PlanetID())->second;
-    ps->SetAvailableShips(AvailableShipsInMyPlanet(*it));
+void GameState::InitAvailableShipsInPlanets() {
+  for(map<int, PlanetState*>::iterator it = planets_state.begin();
+      it != planets_state.end(); ++it) {
+    PlanetState* ps = it->second;
+    ps->SetAvailableShips(AvailableShipsInPlanet(ps));
   }
 }
 
-int GameState::AvailableShipsInMyPlanet(Planet p) {
-  PlanetState* ps = planets_state.find(p.PlanetID())->second;
+int GameState::AvailableShipsInPlanet(PlanetState* ps) {
   vector<int>* ships_per_turn = ps->GetAvailableShipsPerTurn();
   int available_ships = 999999;
   for(int i = 0; i < 50; i++) {

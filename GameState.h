@@ -31,15 +31,15 @@ class GameState {
 
  private:
   void InitShipsAvailablePerTurnAndPlanet();
-  void InitMyPlanets();
+  void InitPlanets();
   std::vector<int> ShipsAvailableInPlanetPerTurn(Planet p);
   std::vector<int> ComputeShipsAvailablePerTurnWithMovingFleet(Planet p);
   std::vector<int> ComputeShipsAvailablePerTurnBasedOnGrowthRate(std::vector<int> ships_per_turn,
 									 Planet p);
   void InitMyUnsafePlanets();
   void CheckAndMaybeSetAsMyUnsafePlanet(Planet p);
-  void InitAvailableShipsInMyPlanets();
-  int AvailableShipsInMyPlanet(Planet p);
+  void InitAvailableShipsInPlanets();
+  int AvailableShipsInPlanet(PlanetState* ps);
 
   std::map<int, PlanetState*> planets_state;
   PlanetWars* pw;
