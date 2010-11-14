@@ -5,11 +5,11 @@ void Defense::DoDefense(PlanetWars* p, GameState* gs) {
   pw = p;
   game_state = gs;
   for(int growth_rate = 5; growth_rate > 0; growth_rate--) {
-    if(game_state->AreSafePlanetsWithAvailableShips()) {
+    if(game_state->AreMySafePlanetsWithAvailableShips()) {
       vector<Planet*> unsafe_planets = game_state->GetUnsafePlanetsWithGrowthRate(growth_rate);
       vector<Planet*> still_unsafe_planets = TryToSendHelpBasic(unsafe_planets);
       //      TryToSendHelpComplex(still_unsafe_planets);
-    }
+      }
   }
 }
 
@@ -18,7 +18,7 @@ vector<Planet*> Defense::TryToSendHelpBasic(vector<Planet*> unsafe_planets) {
     int unsafe_planet_id = (*it)->PlanetID();
     vector<pair<int, int> > help;
     int ships_needed = game_state->GetNeededShipsToSafeUnsafePlanet(unsafe_planet_id);
-    vector<Planet*> safe_planets = game_state->GetSafePlanetsSortedByDistanceToPlanet(unsafe_planet_id);
+    vector<Planet*> safe_planets = game_state->GetMySafePlanetsSortedByDistanceToPlanet(unsafe_planet_id);
     for(vector<Planet*>::iterator it2 = safe_planets.begin(); it2 < safe_planets.end(); ++it2) {
       int safe_planet_id = (*it2)->PlanetID();
       if(pw->Distance(unsafe_planet_id, safe_planet_id) <= game_state->GetPlanetLostInTurn(unsafe_planet_id)) {
@@ -47,7 +47,7 @@ void Defense::TryToSendHelpComplex(vector<Planet*> unsafe_planets) {
 map<int, pair<int, int> > Defense::ComputeAllPossibleHelp(Planet* p) {
   map<int, pair<int, int> > help;
   int accumulated_help = 0;
-  vector<Planet*> safe_planets = game_state->GetSafePlanetsSortedByDistanceToPlanet(p->PlanetID());
+  vector<Planet*> safe_planets = game_state->GetMySafePlanetsSortedByDistanceToPlanet(p->PlanetID());
   for(vector<Planet*>::iterator it = safe_planets.begin(); it < safe_planets.end(); ++it) {
     int safe_planet_id = (*it)->PlanetID();
     int available_ships = game_state->GetAvailableShips(safe_planet_id);

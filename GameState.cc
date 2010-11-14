@@ -34,16 +34,17 @@ vector<Planet*> GameState::GetUnsafePlanetsWithGrowthRate(int gr) {
   return unsafe_planets;
 }
 
-vector<Planet*> GameState::GetSafePlanets() {
+vector<Planet*> GameState::GetMySafePlanets() {
   vector<Planet*> safe_planets;
   for(map<int, PlanetState*>::iterator it = planets_state.begin(); it != planets_state.end(); ++it) {
-    if(!it->second->IsUnsafePlanet()) safe_planets.push_back(it->second->GetPlanet());
+    if(!it->second->IsUnsafePlanet() && it->second->GetPlanet()->Owner() == 1)
+      safe_planets.push_back(it->second->GetPlanet());
   }
   return safe_planets;
 }
 
-std::vector<Planet*> GameState::GetSafePlanetsSortedByDistanceToPlanet(int planet_id) {
-  vector<Planet*> safe_planets = GetSafePlanets();
+std::vector<Planet*> GameState::GetMySafePlanetsSortedByDistanceToPlanet(int planet_id) {
+  vector<Planet*> safe_planets = GetMySafePlanets();
   int key, i;
   for(int j = 1; j < safe_planets.size(); j++) {
     Planet* p = safe_planets[j];
@@ -58,9 +59,11 @@ std::vector<Planet*> GameState::GetSafePlanetsSortedByDistanceToPlanet(int plane
   return safe_planets;
 }
 
-bool GameState::AreSafePlanetsWithAvailableShips() {
-  for(map<int, PlanetState*>::iterator it = planets_state.begin(); it != planets_state.end(); ++it) {
-    if(!it->second->IsUnsafePlanet() && it->second->GetAvailableShips() > 1) return true;
+bool GameState::AreMySafePlanetsWithAvailableShips() {
+  vector<Planet*> safe_planets = GetMySafePlanets();
+  for(vector<Planet*>::iterator it = safe_planets.begin(); it != safe_planets.end(); ++it) {
+    PlanetState* ps = GetPlanetState((*it)->PlanetID());
+    if(ps->GetAvailableShips() > 1) return true;
   }
   return false;
 }
@@ -171,8 +174,10 @@ vector<int> GameState::ComputeShipsAvailablePerTurnBasedOnGrowthRate(vector<int>
 void GameState::InitPlanets() {
   vector<Planet> planets = pw->Planets();
   for(vector<Planet>::iterator it = planets.begin(); it < planets.end(); ++it) {
-    PlanetState* ps = planets_state.find(it->PlanetID())->second;
-    ps->SetPlanet(new Planet(*it));
+    if(it->Owner() > 0 ) {
+      PlanetState* ps = planets_state.find(it->PlanetID())->second;
+      ps->SetPlanet(new Planet(*it));
+    }
   }
 }
 

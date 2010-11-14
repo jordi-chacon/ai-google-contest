@@ -16,9 +16,9 @@ class GameState {
   PlanetState* GetPlanetState(int planet_id);
   std::vector<Planet*> GetUnsafePlanets();
   std::vector<Planet*> GetUnsafePlanetsWithGrowthRate(int gr);
-  std::vector<Planet*> GetSafePlanets();
-  std::vector<Planet*> GetSafePlanetsSortedByDistanceToPlanet(int planet_id);
-  bool AreSafePlanetsWithAvailableShips();
+  std::vector<Planet*> GetMySafePlanets();
+  std::vector<Planet*> GetMySafePlanetsSortedByDistanceToPlanet(int planet_id);
+  bool AreMySafePlanetsWithAvailableShips();
   int GetNeededShipsToSafeUnsafePlanet(int planet_id);
   int GetAvailableShips(int planet_id);
   vector<int>* GetAvailableShipsPerTurn(int planet_id);

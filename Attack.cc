@@ -58,7 +58,8 @@ void Attack::SendFleetsToFrontierPlanets(vector<int> frontier_planets) {
     }
     if(closest_frontier != it->PlanetID()) {
       int available_ships = game_state->GetAvailableShips(it->PlanetID());
-      pw->IssueOrder(it->PlanetID(), closest_frontier, available_ships);
+      if(available_ships > 0)
+	pw->IssueOrder(it->PlanetID(), closest_frontier, available_ships);
     }
   }
 }
@@ -93,8 +94,11 @@ void Attack::DecideWhereToAttack(int my_planet, int ships_for_attack, vector<Pla
 	ships_for_attack -= p.NumShips() + 1;
       }
       else if(p.Owner() > 1) {
-	pw->IssueOrder(my_planet, p.PlanetID(), ships_for_attack - 1);
-	break;
+	int min_ships_needed = p.NumShips() + p.GrowthRate() * pw->Distance(p.PlanetID(), my_planet) * 2;
+	if(ships_for_attack > min_ships_needed) {
+	  pw->IssueOrder(my_planet, p.PlanetID(), min_ships_needed);
+	  ships_for_attack -= min_ships_needed;
+	}
       }
     }
   }
@@ -121,6 +125,7 @@ bool Attack::IsNeutralPlanetWithManyFleets(Planet p) {
 }
 
 bool Attack::IsReallyGoodNeutralPlanetCloseToEnemy(Planet p) {
+  if(p.Owner() != 0) return false;
   if(p.GrowthRate() < 3) return false;
   vector<Planet> enemy_planets = pw->EnemyPlanets();
   for(vector<Planet>::iterator it = enemy_planets.begin(); it < enemy_planets.end(); ++it) {
