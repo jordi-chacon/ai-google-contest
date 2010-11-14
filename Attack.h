@@ -18,6 +18,7 @@ class Attack {
  private:
   vector<int> ComputeMyFrontierPlanets();
   bool IsFrontier(Planet p, vector<Planet>* my_planets, vector<Planet>* enemy_planets);
+  pair<int,int> FindClosestEnemyFromMyPlanet(Planet p, vector<Planet>* enemy_planets);
   void SendFleetsToFrontierPlanets(vector<int> frontier_planets);
   void TryToAttackFromPlanet(int my_planet, int available_ships_for_attack, int turn);
   vector<PlanetScore> ComputePlanetsListSortedByScore(int turn, int my_planet);

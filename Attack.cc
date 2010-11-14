@@ -25,23 +25,30 @@ vector<int> Attack::ComputeMyFrontierPlanets() {
 }
 
 bool Attack::IsFrontier(Planet p, vector<Planet>* my_planets, vector<Planet>* enemy_planets) {
-  int min_distance_to_enemy = 1000;
-  int closest_enemy_planet = 1;
-  for(vector<Planet>::iterator it2 = enemy_planets->begin(); it2 < enemy_planets->end(); ++it2) {
-    int aux_distance = pw->Distance(p.PlanetID(), it2->PlanetID());
-    if(aux_distance < min_distance_to_enemy) {
-      min_distance_to_enemy = aux_distance;
-      closest_enemy_planet = it2->PlanetID();
-    }
-  }
+  pair<int,int> closest_enemy = FindClosestEnemyFromMyPlanet(p, enemy_planets);
   bool is_frontier = true;
-  for(vector<Planet>::iterator it2 = my_planets->begin(); it2 < my_planets->end(); ++it2) {
-    if(pw->Distance(it2->PlanetID(), closest_enemy_planet) < min_distance_to_enemy) {
+  for(vector<Planet>::iterator it = my_planets->begin(); it < my_planets->end(); ++it) {
+    int aux_distance = pw->Distance(it->PlanetID(), closest_enemy.first);
+    if(aux_distance < closest_enemy.second &&
+       closest_enemy.second > pw->Distance(it->PlanetID(), p.PlanetID())) {
       is_frontier = false;
       break;
     }
   }
   return is_frontier;
+}
+
+pair<int, int> Attack::FindClosestEnemyFromMyPlanet(Planet p, vector<Planet>* enemy_planets) {
+  int min_distance_to_enemy = 1000;
+  int closest_enemy_planet = 1;
+  for(vector<Planet>::iterator it = enemy_planets->begin(); it < enemy_planets->end(); ++it) {
+    int aux_distance = pw->Distance(p.PlanetID(), it->PlanetID());
+    if(aux_distance < min_distance_to_enemy) {
+      min_distance_to_enemy = aux_distance;
+      closest_enemy_planet = it->PlanetID();
+    }
+  }
+  return pair<int,int>(closest_enemy_planet, min_distance_to_enemy);
 }
 
 void Attack::SendFleetsToFrontierPlanets(vector<int> frontier_planets) {
@@ -110,7 +117,7 @@ bool Attack::IsEnoughFleetsAttackingPlanet(vector<Fleet> fleets, Planet p) {
     if(it->DestinationPlanet() == p.PlanetID() && it->Owner() == 1)
       fleet_sum += it->NumShips();
     //if(it->DestinationPlanet() == p.PlanetID() && it->Owner() == 2)
-    //fleet_sum -= it->NumShips();
+    //httpfleet_sum -= it->NumShips();
   }
   return fleet_sum > p.NumShips();
 }
