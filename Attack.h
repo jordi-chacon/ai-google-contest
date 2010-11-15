@@ -23,7 +23,6 @@ class Attack {
   void TryToAttackFromPlanet(int my_planet, int available_ships_for_attack, int turn);
   vector<PlanetScore> ComputePlanetsListSortedByScore(int turn, int my_planet);
   void DecideWhereToAttack(int my_planet, int ships_for_attack, vector<PlanetScore> ps_score);
-  bool IsEnoughFleetsAttackingPlanet(vector<Fleet> fleets, Planet p);
   bool IsStupidToGoToPlanet(Planet p, int turn);
   bool IsNeutralPlanetWithManyFleets(Planet p);
   bool IsReallyGoodNeutralPlanetCloseToEnemy(Planet p);

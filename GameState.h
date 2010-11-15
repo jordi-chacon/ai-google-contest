@@ -9,6 +9,12 @@
 
 using namespace std;
 
+struct TurnState {
+  int owner;
+  int num_ships;
+};
+
+
 class GameState {
  public:
   void Init(PlanetWars* p);
@@ -23,6 +29,7 @@ class GameState {
   int GetAvailableShips(int planet_id);
   vector<int>* GetAvailableShipsPerTurn(int planet_id);
   int GetPlanetLostInTurn(int planet_id);
+  int GetNeededShipsToTakeNeutralPlanet(int planet_id, int turn);
   void SetAvailableShipsPerTurn(int planet_id, vector<int> v);
   void DecreaseAvailableShips(int planet_id, int ships_sent);
   void PrintGameState();
@@ -37,12 +44,20 @@ class GameState {
   std::vector<int> ComputeShipsAvailablePerTurnBasedOnGrowthRate(std::vector<int> ships_per_turn,
 									 Planet p);
   void InitMyUnsafePlanets();
+  void InitNeutralPlanets();
+  std::vector<TurnState> ComputeTurnStateNeutralPlanet(Planet p);
+  TurnState ComputeNextTurnState(Planet p, TurnState prev, vector<Fleet> arriving_fleets);
+  TurnState MaybeChangeNeutralPlanetOwner(TurnState ts, int owner);
+  pair<int,int> ComputeAmountArrivingFleetsPerPlayer(vector<Fleet> arriving_fleets);
+  TurnState ComputeTurnStateWhenNeutralOwner(TurnState ts, pair<int,int> fleets_ships);
+  TurnState MaybeChangeNeutralPlanetOwner(TurnState ts, Fleet f);
   void CheckAndMaybeSetAsMyUnsafePlanet(Planet p);
   void InitAvailableShipsInPlanets();
   int AvailableShipsInPlanet(PlanetState* ps);
 
   std::map<int, PlanetState*> planets_state;
   PlanetWars* pw;
+  std::map<int, std::vector<TurnState> > neutral_planets_state;
 };
 
 #endif

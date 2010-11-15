@@ -96,9 +96,15 @@ void Attack::DecideWhereToAttack(int my_planet, int ships_for_attack, vector<Pla
   for(vector<PlanetScore>::iterator it = planets_score.begin(); it < planets_score.end(); ++it) {
     Planet p = *(it->GetPlanet());
     if(ships_for_attack > p.NumShips() + 1) {
-      if(p.Owner() == 0 && !IsEnoughFleetsAttackingPlanet(fleets, p)) {
-	pw->IssueOrder(my_planet, p.PlanetID(), p.NumShips() + 1);
-	ships_for_attack -= p.NumShips() + 1;
+      if(p.Owner() == 0) {
+	int ships_needed =
+	  game_state->GetNeededShipsToTakeNeutralPlanet(p.PlanetID(), pw->Distance(my_planet, p.PlanetID()));
+	if(ships_needed > 0 && ships_for_attack > ships_needed) {
+	  if(ships_for_attack > ships_needed + 2) ships_needed += 2;
+	  else if(ships_for_attack > ships_needed + 1) ships_needed += 1;
+	  pw->IssueOrder(my_planet, p.PlanetID(), ships_needed);
+	  ships_for_attack -= ships_needed;
+	}
       }
       else if(p.Owner() > 1) {
 	int min_ships_needed = p.NumShips() + p.GrowthRate() * pw->Distance(p.PlanetID(), my_planet) * 2;
@@ -109,17 +115,6 @@ void Attack::DecideWhereToAttack(int my_planet, int ships_for_attack, vector<Pla
       }
     }
   }
-}
-
-bool Attack::IsEnoughFleetsAttackingPlanet(vector<Fleet> fleets, Planet p) {
-  int fleet_sum = 0;
-  for(vector<Fleet>::const_iterator it = fleets.begin(); it < fleets.end(); ++it) {
-    if(it->DestinationPlanet() == p.PlanetID() && it->Owner() == 1)
-      fleet_sum += it->NumShips();
-    //if(it->DestinationPlanet() == p.PlanetID() && it->Owner() == 2)
-    //httpfleet_sum -= it->NumShips();
-  }
-  return fleet_sum > p.NumShips();
 }
 
 bool Attack::IsStupidToGoToPlanet(Planet p, int turn) {
@@ -133,7 +128,6 @@ bool Attack::IsNeutralPlanetWithManyFleets(Planet p) {
 
 bool Attack::IsReallyGoodNeutralPlanetCloseToEnemy(Planet p) {
   if(p.Owner() != 0) return false;
-  if(p.GrowthRate() < 3) return false;
   vector<Planet> enemy_planets = pw->EnemyPlanets();
   for(vector<Planet>::iterator it = enemy_planets.begin(); it < enemy_planets.end(); ++it) {
     if(pw->Distance(p.PlanetID(), it->PlanetID()) < 5) return true;
@@ -145,7 +139,7 @@ double Attack::ComputeScore(int growth_rate, int distance, int num_ships, bool i
   if(num_ships == 0) num_ships = 1;
   if(distance == 0) distance = 1;
   double growth_rate_score = 60 * growth_rate;
-  double num_ships_score = 1000 / num_ships / 2;
+  double num_ships_score = 1400 / num_ships / 2;
   double distance_score;
   if(distance > 10) distance_score = -100000 * distance;
   else distance_score = 800 / distance;
